@@ -1,0 +1,68 @@
+<?php
+
+declare(strict_types=1);
+
+use Magento\Catalog\Block\Product\Image;
+use Magento\Framework\Escaper;
+
+/** @var Image $block */
+/** @var Escaper $escaper */
+
+$product = $block->getProduct();
+$galleryImages = $product->getMediaGalleryImages() ?: [];
+$mainImageUrl = $block->getImageUrl();
+$hasLoadingAttribute = ($block->getCustomAttributes() ?: [])['loading'] ?? false;
+
+// Prepare image data array
+$imageData = [];
+foreach ($galleryImages as $image) {
+    $imageData[] = [
+        $image->getData('large_image_url') ?: $image->getData('url'),
+    ];
+}
+// If there are no category images, use the main image URL
+if (empty($imageData) && $mainImageUrl) {
+    $imageData[] = [
+        $mainImageUrl,
+    ];
+}
+?>
+
+<div x-data="imageHover()" class="relative w-full h-[300px] overflow-hidden group">
+    <!-- Preloaded images, stacked -->
+    <template x-for="(src, index) in images" :key="index">
+        <img
+            :src="src"
+            :alt="`Product Image ${index + 1}`"
+            x-show="current === index"
+            class="absolute top-0 left-0 w-full h-full object-cover"
+        >
+    </template>
+    <!-- Invisible hover zones -->
+    <div class="absolute inset-0 flex">
+        <template x-for="(_, index) in images.length" :key="index">
+            <div
+                class="flex-1 cursor-pointer"
+                @mouseenter="current = index"
+            ></div>
+        </template>
+    </div>
+    <!-- Hover indicators -->
+    <div class="absolute bottom-2 left-1/2 -translate-x-1/2 transform flex gap-1 invisible group-hover:visible">
+        <template x-for="(_, index) in images.length" :key="index">
+      <span
+          :class="current === index ? 'bg-gray-700' : 'bg-gray-300'"
+          class="w-2 h-2 rounded-full"
+      ></span>
+        </template>
+    </div>
+</div>
+
+<script>
+    function imageHover() {
+        return {
+            current: 0,
+            images: <?= json_encode(array_column($imageData, 0)) ?>,
+        }
+    }
+</script>

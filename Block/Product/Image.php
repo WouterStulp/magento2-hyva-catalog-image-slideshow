@@ -1,0 +1,86 @@
+<?php
+
+namespace AquiveMedia\CatalogImageSlideshow\Block\Product;
+
+use Magento\Catalog\Api\Data\ProductInterface;
+use Magento\Catalog\Model\ProductRepository;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\View\Element\Template\Context;
+
+class Image extends \Magento\Catalog\Block\Product\Image
+{
+    /**
+     * @var ScopeConfigInterface
+     */
+    protected $_scopeConfig;
+
+    /**
+     * @var ProductRepository
+     */
+    protected $_productRepository;
+
+    /**
+     * @param Context $context
+     * @param ScopeConfigInterface $scopeConfig
+     * @param ProductRepository $productRepository
+     * @param array $data
+     */
+    public function __construct(
+        Context $context,
+        ScopeConfigInterface $scopeConfig,
+        ProductRepository $productRepository,
+        array $data = []
+    ){
+        $this->_scopeConfig = $scopeConfig;
+        $this->_productRepository = $productRepository;
+        parent::__construct($context, $data);
+    }
+
+    /**
+     * @return bool
+     */
+    public function slideShowEnabled(): bool
+    {
+        $enabled = false;
+        try {
+            $enabled = $this->_scopeConfig->getValue('catalog/image_slideshow/enable');
+        } catch (\Exception $e) {
+            $this->_logger->error('Error getting SlideShowEnabled config: ' . $e->getMessage());
+        }
+        return $enabled;
+    }
+
+    /**
+     * @param $template
+     * @return Image
+     */
+    public function setTemplate($template)
+    {
+        if ($this->slideShowEnabled()) {
+            // Check if the template is the default product image template (This is the path for Hyva Themes)
+            if ($this->getProduct() !== null){
+                if (str_contains($template, 'product/list/image.phtml')) {
+                    $template = 'AquiveMedia_CatalogImageSlideshow::product/list/image.phtml';
+                }
+            }
+        }
+        return parent::setTemplate($template);
+    }
+
+    /**
+     * @return ProductInterface|mixed|null
+     * @throws NoSuchEntityException
+     */
+    public function getProduct()
+    {
+        try {
+            $productId = $this->getProductId();
+            $product = $this->_productRepository->getById($productId);
+            return $product;
+        } catch (NoSuchEntityException $e) {
+            $this->_logger->error('Error getting product: ' . $e->getMessage());
+            return null;
+        }
+    }
+}
