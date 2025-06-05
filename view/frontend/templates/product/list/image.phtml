@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 
 use Magento\Catalog\Block\Product\Image;
@@ -8,61 +7,105 @@ use Magento\Framework\Escaper;
 /** @var Image $block */
 /** @var Escaper $escaper */
 
+$imageHelper = $this->helper('\Magento\Catalog\Helper\Image');
 $product = $block->getProduct();
 $galleryImages = $product->getMediaGalleryImages() ?: [];
+$uniqueId = uniqid('product-image-'); // Unique identifier for each component
 $mainImageUrl = $block->getImageUrl();
-$hasLoadingAttribute = ($block->getCustomAttributes() ?: [])['loading'] ?? false;
+$listBlock = $block->getLayout()->getBlock('category.products.list');
+$currentMode = $listBlock ? $listBlock->getMode() : 'grid';
 
-// Prepare image data array
 $imageData = [];
+
 foreach ($galleryImages as $image) {
-    $imageData[] = [
-        $image->getData('large_image_url') ?: $image->getData('url'),
-    ];
+    $thumbnailImage = $imageHelper->init($product, 'category_page_grid')
+        ->setImageFile($image->getFile())
+        ->getUrl();
+    $url = $thumbnailImage ?: $image->getData('url');
+    if ($url && !in_array($url, $imageData)) {
+        $imageData[] = $url;
+    }
 }
-// If there are no category images, use the main image URL
+
+// Fallback to main image if no gallery images
 if (empty($imageData) && $mainImageUrl) {
-    $imageData[] = [
-        $mainImageUrl,
-    ];
+    $imageData[] = $mainImageUrl;
 }
 ?>
 
-<div x-data="imageHover()" class="relative w-full h-[300px] overflow-hidden group">
-    <!-- Preloaded images, stacked -->
+<div x-data="productGallery()"
+     x-init="init(<?= $escaper->escapeHtmlAttr(json_encode($imageData)) ?>)"
+     x-intersect.once="loadImages()"
+     @mouseleave="current = 0"
+     class="relative w-full <?= /* @noEscape */ $currentMode === 'list' ? 'h-[300px]' : 'h-[200px]' ?> overflow-hidden group aspect-square"
+     id="<?= $escaper->escapeHtmlAttr($uniqueId) ?>">
+
+    <!-- Loading state -->
+    <div x-show="!initialized" class="absolute inset-0 bg-gray-100 animate-pulse"></div>
+
+    <!-- Image container -->
     <template x-for="(src, index) in images" :key="index">
-        <img
-            :src="src"
-            :alt="`Product Image ${index + 1}`"
-            x-show="current === index"
-            class="absolute top-0 left-0 w-full h-full object-cover"
-        >
+        <img :src="src"
+             alt="<?= $escaper->escapeHtmlAttr($product->getName()) ?> Image"
+             x-show="current === index"
+             class="absolute top-0 left-0 w-full h-full object-contain"
+             @error="onImageError(index)"
+             loading="lazy">
     </template>
-    <!-- Invisible hover zones -->
-    <div class="absolute inset-0 flex">
+
+    <!-- Navigation controls -->
+    <div class="absolute inset-0 flex" x-show="initialized  && images.length > 1">
         <template x-for="(_, index) in images.length" :key="index">
-            <div
-                class="flex-1 cursor-pointer"
-                @mouseenter="current = index"
-            ></div>
+            <div class="flex-1 cursor-pointer" @mouseenter="current = index"></div>
         </template>
     </div>
-    <!-- Hover indicators -->
-    <div class="absolute bottom-2 left-1/2 -translate-x-1/2 transform flex gap-1 invisible group-hover:visible">
+
+    <!-- Indicators -->
+    <div class="absolute bottom-2 left-1/2 -translate-x-1/2 transform flex gap-1 invisible group-hover:visible" x-show="initialized && images.length > 1">
         <template x-for="(_, index) in images.length" :key="index">
-      <span
-          :class="current === index ? 'bg-gray-700' : 'bg-gray-300'"
-          class="w-2 h-2 rounded-full"
-      ></span>
+            <span :class="current === index ? 'bg-gray-700' : 'bg-gray-300'"
+                  class="w-2 h-2 rounded-full transition-colors"></span>
         </template>
     </div>
 </div>
 
 <script>
-    function imageHover() {
-        return {
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('productGallery', () => ({
             current: 0,
-            images: <?= json_encode(array_column($imageData, 0)) ?>,
-        }
-    }
+            images: [],
+            initialized: false,
+            isMobile: false,
+            imagesLoaded: false,
+
+            init(imageUrls) {
+                // Ensure we have valid image data
+                this.images = Array.isArray(imageUrls) ? imageUrls : [];
+                // detect mobile devices by screen width
+                this.isMobile = window.matchMedia('(max-width: 639px)').matches;
+                // Force single image on mobile
+                if (this.isMobile && this.images.length > 0) {
+                    this.images = [this.images[0]];
+                }
+                this.initialized = true;
+            },
+
+            loadImages() {
+                if (!this.imagesLoaded) {
+                    this.images.forEach((src, index) => {
+                        const img = new Image();
+                        img.src = src;
+                    });
+                    this.imagesLoaded = true;
+                }
+            },
+
+            onImageError(index) {
+                // Try fallback to main image if available
+                if (index !== 0 && this.images.length > 0) {
+                    this.current = 0;
+                }
+            }
+        }));
+    });
 </script>

@@ -7,6 +7,7 @@ use Magento\Catalog\Model\ProductRepository;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\View\Element\Template\Context;
+use Psr\Log\LoggerInterface;
 
 class Image extends \Magento\Catalog\Block\Product\Image
 {
@@ -21,19 +22,27 @@ class Image extends \Magento\Catalog\Block\Product\Image
     protected $_productRepository;
 
     /**
+     * @var LoggerInterface
+     */
+    protected $_logger;
+
+    /**
      * @param Context $context
      * @param ScopeConfigInterface $scopeConfig
      * @param ProductRepository $productRepository
+     * @param LoggerInterface $logger
      * @param array $data
      */
     public function __construct(
-        Context $context,
+        Context              $context,
         ScopeConfigInterface $scopeConfig,
-        ProductRepository $productRepository,
-        array $data = []
+        ProductRepository    $productRepository,
+        LoggerInterface      $logger,
+        array                $data = []
     ){
         $this->_scopeConfig = $scopeConfig;
         $this->_productRepository = $productRepository;
+        $this->_logger = $logger;
         parent::__construct($context, $data);
     }
 
@@ -79,7 +88,6 @@ class Image extends \Magento\Catalog\Block\Product\Image
             $product = $this->_productRepository->getById($productId);
             return $product;
         } catch (NoSuchEntityException $e) {
-            $this->_logger->error('Error getting product: ' . $e->getMessage());
             return null;
         }
     }
