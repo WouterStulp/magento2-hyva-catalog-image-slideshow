@@ -9,7 +9,7 @@
     "hyva-themes/magento2-default-theme": "~1.2.3"
   },
   "license": [
-    "Proprietary"
+    "proprietary"
   ],
   "autoload": {
     "files": [
