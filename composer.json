@@ -6,7 +6,7 @@
   "require": {
     "magento/framework": "*",
     "magento/module-catalog": "*",
-    "hyva-themes/magento2-default-theme": "~1.2.3"
+    "hyva-themes/magento2-default-theme": "^1.2.3"
   },
   "license": [
     "proprietary"
