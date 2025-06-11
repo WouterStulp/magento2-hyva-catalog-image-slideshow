@@ -51,13 +51,12 @@ class Image extends \Magento\Catalog\Block\Product\Image
      */
     public function slideShowEnabled(): bool
     {
-        $enabled = false;
         try {
-            $enabled = $this->_scopeConfig->getValue('catalog/image_slideshow/enable');
-        } catch (\Exception $e) {
-            $this->_logger->error('Error getting SlideShowEnabled config: ' . $e->getMessage());
+            return $this->_scopeConfig->getValue(self::XML_PATH_SLIDESHOW_ENABLED);
+        } catch (\Throwable $e) {
+            $this->_logger->error('Error getting slideshow enabled config: ' . $e->getMessage());
+            return false;
         }
-        return $enabled;
     }
 
     /**
