@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 use Magento\Catalog\Block\Product\Image;
@@ -7,105 +8,116 @@ use Magento\Framework\Escaper;
 /** @var Image $block */
 /** @var Escaper $escaper */
 
-$imageHelper = $this->helper('\Magento\Catalog\Helper\Image');
+$hasLoadingAttribute = ($block->getCustomAttributes() ?: [])['loading'] ?? false;
+
 $product = $block->getProduct();
-$galleryImages = $product->getMediaGalleryImages() ?: [];
-$uniqueId = uniqid('product-image-'); // Unique identifier for each component
-$mainImageUrl = $block->getImageUrl();
-$listBlock = $block->getLayout()->getBlock('category.products.list');
-$currentMode = $listBlock ? $listBlock->getMode() : 'grid';
+$galleryImages = $product ? $product->getMediaGalleryImages() : [];
+$galleryCount = $galleryImages ? count($galleryImages) : 0;
 
-$imageData = [];
-
-foreach ($galleryImages as $image) {
-    $thumbnailImage = $imageHelper->init($product, 'category_page_grid')
-        ->setImageFile($image->getFile())
-        ->getUrl();
-    $url = $thumbnailImage ?: $image->getData('url');
-    if ($url && !in_array($url, $imageData)) {
-        $imageData[] = $url;
+$galleryUrls = [];
+if ($galleryImages) {
+    foreach ($galleryImages as $image) {
+        $imageUrl = $this->helper('Magento\Catalog\Helper\Image')
+            ->init($product, 'category_page_grid')
+            ->setImageFile($image->getFile())
+            ->getUrl();
+        if ($imageUrl) {
+            $galleryUrls[] = $imageUrl;
+        }
     }
 }
 
-// Fallback to main image if no gallery images
-if (empty($imageData) && $mainImageUrl) {
-    $imageData[] = $mainImageUrl;
-}
 ?>
 
-<div x-data="productGallery()"
-     x-init="init(<?= $escaper->escapeHtmlAttr(json_encode($imageData)) ?>)"
-     x-intersect.once="loadImages()"
-     @mouseleave="current = 0"
-     class="relative w-full <?= /* @noEscape */ $currentMode === 'list' ? 'h-[300px]' : 'h-[200px]' ?> overflow-hidden group aspect-square"
-     id="<?= $escaper->escapeHtmlAttr($uniqueId) ?>">
+<?php if ($galleryCount > 1): ?>
+    <div class="slideshow-container relative group block"
+         x-data="productSlideshow()"
+         x-init="init(<?= $escaper->escapeHtmlAttr(json_encode($galleryUrls)) ?>)"
+         x-intersect.once="preloadImages"
+         @mouseenter="showIndicators = true"
+         @mouseleave="current = 0; showIndicators = false">
 
-    <!-- Loading state -->
-    <div x-show="!initialized" class="absolute inset-0 bg-gray-100 animate-pulse"></div>
+        <img :src="images.length > 0 ? images[current] : '<?= $escaper->escapeUrl($block->getImageUrl()) ?>'"
+             class="hover:shadow-sm object-contain <?= $escaper->escapeHtmlAttr($block->getClass()) ?>"
+             @update-gallery-<?= (int)$block->getProductId() ?>.window="$root.src = $event.detail"
+             :alt="`Image ${current + 1} of ${images.length}`"
+        <?php foreach ($block->getCustomAttributes() as $name => $value): ?>
+            <?= $escaper->escapeHtmlAttr($name) ?>="<?= $escaper->escapeHtmlAttr($value) ?>"
+        <?php endforeach; ?>
+        <?php if (! $hasLoadingAttribute): ?>
+            loading="lazy"
+        <?php endif; ?>
+            width="<?= $escaper->escapeHtmlAttr($block->getWidth()) ?>"
+            height="<?= $escaper->escapeHtmlAttr($block->getHeight()) ?>"
+            alt="<?= $escaper->escapeHtmlAttr($block->getLabel()) ?>"
+            title="<?= $escaper->escapeHtmlAttr($block->getLabel()) ?>"
+        />
 
-    <!-- Image container -->
-    <template x-for="(src, index) in images" :key="index">
-        <img :src="src"
-             alt="<?= $escaper->escapeHtmlAttr($product->getName()) ?> Image"
-             x-show="current === index"
-             class="absolute top-0 left-0 w-full h-full object-contain"
-             @error="onImageError(index)"
-             loading="lazy">
-    </template>
+        <div x-show="images.length > 1" class="absolute inset-0 flex">
+            <template x-for="index in images.length" :key="index">
+                <div class="flex-1 cursor-pointer"
+                     @mouseenter="current = index - 1"
+                     :title="`Image ${index}`"></div>
+            </template>
+        </div>
 
-    <!-- Navigation controls -->
-    <div class="absolute inset-0 flex" x-show="initialized  && images.length > 1">
-        <template x-for="(_, index) in images.length" :key="index">
-            <div class="flex-1 cursor-pointer" @mouseenter="current = index"></div>
-        </template>
+        <div x-show="images.length > 1 && showIndicators"
+             class="absolute bottom-2 left-0 right-0 flex justify-center gap-2 z-50">
+            <template x-for="index in images.length" :key="index">
+                <span :class="current === (index - 1) ? 'bg-gray-600' : 'bg-gray-300'"
+                      class="w-3 h-3 rounded-full border-white border"></span>
+            </template>
+        </div>
+
     </div>
-
-    <!-- Indicators -->
-    <div class="absolute bottom-2 left-1/2 -translate-x-1/2 transform flex gap-1 invisible group-hover:visible" x-show="initialized && images.length > 1">
-        <template x-for="(_, index) in images.length" :key="index">
-            <span :class="current === index ? 'bg-gray-700' : 'bg-gray-300'"
-                  class="w-2 h-2 rounded-full transition-colors"></span>
-        </template>
-    </div>
-</div>
+<?php else: ?>
+    <img class="hover:shadow-sm object-contain <?= $escaper->escapeHtmlAttr($block->getClass()) ?>"
+         x-data=""
+         @update-gallery-<?= (int)$block->getProductId() ?>.window="$root.src = $event.detail"
+    <?php foreach ($block->getCustomAttributes() as $name => $value): ?>
+        <?= $escaper->escapeHtmlAttr($name) ?>="<?= $escaper->escapeHtmlAttr($value) ?>"
+    <?php endforeach; ?>
+        src="<?= $escaper->escapeUrl($block->getImageUrl()) ?>"
+    <?php if (! $hasLoadingAttribute): ?>
+        loading="lazy"
+    <?php endif; ?>
+        width="<?= $escaper->escapeHtmlAttr($block->getWidth()) ?>"
+        height="<?= $escaper->escapeHtmlAttr($block->getHeight()) ?>"
+        alt="<?= $escaper->escapeHtmlAttr($block->getLabel()) ?>"
+        title="<?= $escaper->escapeHtmlAttr($block->getLabel()) ?>"
+        />
+<?php endif; ?>
 
 <script>
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('productGallery', () => ({
-            current: 0,
-            images: [],
-            initialized: false,
-            isMobile: false,
-            imagesLoaded: false,
+document.addEventListener('alpine:init', () => {
+    Alpine.data('productSlideshow', () => ({
+        current: 0,
+        images: [],
+        showIndicators: false,
 
-            init(imageUrls) {
-                // Ensure we have valid image data
-                this.images = Array.isArray(imageUrls) ? imageUrls : [];
-                // detect mobile devices by screen width
-                this.isMobile = window.matchMedia('(max-width: 639px)').matches;
-                // Force single image on mobile
-                if (this.isMobile && this.images.length > 0) {
-                    this.images = [this.images[0]];
-                }
-                this.initialized = true;
-            },
+        init(imageUrls) {
+            this.preloadImages(Array.isArray(imageUrls) ? imageUrls : []);
+        },
 
-            loadImages() {
-                if (!this.imagesLoaded) {
-                    this.images.forEach((src, index) => {
-                        const img = new Image();
-                        img.src = src;
-                    });
-                    this.imagesLoaded = true;
-                }
-            },
+        preloadImages(urls) {
+            if (urls.length === 0) return;
 
-            onImageError(index) {
-                // Try fallback to main image if available
-                if (index !== 0 && this.images.length > 0) {
-                    this.current = 0;
-                }
-            }
-        }));
-    });
+            // Create a promise for each image preload
+            const preloadPromises = urls.map((url) => {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => resolve(url);
+                    img.onerror = () => resolve(url);
+                    img.src = url;
+                });
+            });
+
+            // Wait for all images to load, then set them for slideshow
+            Promise.all(preloadPromises).then(() => {
+                this.images = urls;
+            });
+        }
+    }));
+});
 </script>
+<?php

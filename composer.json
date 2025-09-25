@@ -1,6 +1,5 @@
 {
   "name": "aquivemedia/module-hyva-catalog-image-slideshow",
-  "version": "1.0.3",
   "description": "N/A",
   "type": "magento2-module",
   "require": {
@@ -8,9 +7,6 @@
     "magento/module-catalog": "*",
     "hyva-themes/magento2-default-theme": "^1.2.3"
   },
-  "license": [
-    "proprietary"
-  ],
   "autoload": {
     "files": [
       "registration.php"
