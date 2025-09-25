@@ -17,18 +17,13 @@ A Magento 2 module that adds an interactive image slideshow to product listings 
 
 ## Demo
 
-### Video Demo
-![Slideshow Demo](./docs/assets/demo.mp4)
+![Slideshow Demo](./docs/assets/demo.gif)
 
 ### Features in Action
 When products have multiple gallery images, users can:
 - Hover horizontally across the image to switch between photos
 - See visual indicators showing which image is active
 - Experience instant image switching with preloaded content
-
-### Screenshots
-![Category Page with Slideshow](./docs/assets/images/category-page-demo.png)
-*Product listings with interactive image slideshows*
 
 ## Installation
 
