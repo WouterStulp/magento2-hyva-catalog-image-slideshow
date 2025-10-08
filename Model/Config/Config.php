@@ -19,7 +19,7 @@ class Config implements ConfigInterface
     public function isEnabled(): bool
     {
         try {
-            return $this->scopeConfig->getValue(ConfigInterface::CATALOG_IMAGE_SLIDESHOW_ENABLED_PATH);
+            return (bool)$this->scopeConfig->getValue(ConfigInterface::CATALOG_IMAGE_SLIDESHOW_ENABLED_PATH);
         } catch (Throwable $e) {
             $this->logger->error('Error getting slideshow enabled config: ' . $e->getMessage());
             return false;

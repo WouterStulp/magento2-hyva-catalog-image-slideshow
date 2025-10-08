@@ -21,7 +21,8 @@ class Image extends OriginalImage
         protected ProductRepository $productRepository,
         protected ImageFactory      $imageFactory,
         array                       $data = []
-    ) {
+    )
+    {
         parent::__construct($context, $data);
     }
 
@@ -73,11 +74,15 @@ class Image extends OriginalImage
 
         $imageHelper = $this->imageFactory->create();
 
-        return array_filter(array_map(function ($image) use ($product, $imageHelper) {
-            return $imageHelper
-                ->init($product, 'category_page_grid')
-                ->setImageFile($image->getFile())
-                ->getUrl();
-        }, $galleryImages->getItems()));
+        return array_values(
+            array_filter(
+                array_map(function ($image) use ($product, $imageHelper) {
+                    return $imageHelper
+                        ->init($product, 'category_page_grid')
+                        ->setImageFile($image->getFile())
+                        ->getUrl();
+                }, $galleryImages->getItems())
+            )
+        );
     }
 }
