@@ -8,7 +8,7 @@ namespace AquiveMedia\CatalogImageSlideshow\Api\Config;
  */
 interface ConfigInterface
 {
-    public const CATALOG_IMAGE_SLIDESHOW_ENABLED_PATH = 'catalog_image_slideshow/general/enabled';
+    public const CATALOG_IMAGE_SLIDESHOW_ENABLED_PATH = 'catalog/image_slideshow/general/enabled';
 
     public function isEnabled(): bool;
 }
